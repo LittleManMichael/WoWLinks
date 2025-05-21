@@ -1,0 +1,8 @@
+## Interface: 110105
+## Title: WoWLinks
+## Notes: Easy access to top WoW content creators, guides and tools (DEBUG VERSION)
+## Author: WowLinks Team
+## Version: 0.1.1
+## SavedVariables: WoWLinksDB
+
+WoWLinks_Debug.lua

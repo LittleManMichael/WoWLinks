@@ -1,5 +1,107 @@
-local addonname = ...
+-- Create global table
+WoWLinks = {}
 
+-- Debug function
+function WoWLinks:Debug(msg)
+    if true then -- Set to false to disable debug messages
+        print("|cFF33FF99WoWLinks Debug:|r " .. tostring(msg))
+    end
+end
+
+-- Initialize the addon
+function WoWLinks:Init()
+    self:Debug("Initializing WoWLinks")
+    
+    -- Create DB if it doesn't exist
+    if not WoWLinksDB then
+        WoWLinksDB = {
+            favorites = {},
+            settings = {
+                scale = 1.0,
+                opacity = 0.9,
+            }
+        }
+    end
+    
+    -- Create main frame if it doesn't exist yet
+    if not self.frame then
+        self:CreateMainFrame()
+    end
+    
+    print("|cFF33FF99WoWLinks:|r Addon loaded. Type /wl or /wowlinks to open.")
+end
+
+function WoWLinks:HandleSlashCommand(msg)
+    self:Debug("Slash command received: " .. tostring(msg))
+    
+    if msg == "reset" then
+        WoWLinksDB = nil
+        self:Init()
+        print("|cFF33FF99WoWLinks:|r Settings reset.")
+    else
+        self:ToggleUI()
+    end
+end
+
+function WoWLinks:ToggleUI()
+    self:Debug("Toggle UI called. Current status: " .. (self.frame:IsShown() and "Shown" or "Hidden"))
+    
+    if self.frame:IsShown() then
+        self.frame:Hide()
+    else
+        self.frame:Show()
+    end
+end
+
+function WoWLinks:OpenURL(url, title)
+    -- Copy URL to clipboard functionality
+    if not StaticPopupDialogs["WOWLINKS_URL"] then
+        StaticPopupDialogs["WOWLINKS_URL"] = {
+            text = "Copy this URL for %s:",
+            button1 = "Close",
+            hasEditBox = true,
+            timeout = 0,
+            whileDead = true,
+            hideOnEscape = true,
+            OnShow = function(self, data)
+                self.editBox:SetText(data.url)
+                self.editBox:SetFocus()
+                self.editBox:HighlightText()
+            end,
+            EditBoxOnEscapePressed = function(self)
+                self:GetParent():Hide()
+            end,
+            preferredIndex = 3,
+        }
+    end
+    
+    StaticPopup_Show("WOWLINKS_URL", title, nil, {url = url})
+end
+
+-- Helper function to recalculate dropdown height
+function WoWLinks:RecalculateClassDropdown(dropdown)
+    local height = 0
+    for _, child in ipairs({dropdown:GetChildren()}) do
+        if child:IsShown() then
+            height = height + child:GetHeight()
+        end
+    end
+    dropdown:SetHeight(height)
+    self:RecalculateContentHeight(dropdown:GetParent())
+end
+
+-- Helper function to recalculate content height
+function WoWLinks:RecalculateContentHeight(content)
+    local height = 0
+    for _, child in ipairs({content:GetChildren()}) do
+        if child:IsShown() then
+            height = height + child:GetHeight() + 5
+        end
+    end
+    content:SetHeight(math.max(height, content:GetParent():GetHeight()))
+end
+
+-- Helper function to populate spec content
 function WoWLinks:PopulateSpecContent(container, specData, specName, className)
     local contentYOffset = -5
     
@@ -77,7 +179,7 @@ function WoWLinks:PopulateSpecContent(container, specData, specName, className)
         contentYOffset = contentYOffset - 25
     end
     
-    -- Similar implementation for guides section
+    -- Guides section
     contentYOffset = contentYOffset - 10
     
     local guidesTitle = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -156,3 +258,31 @@ function WoWLinks:PopulateSpecContent(container, specData, specName, className)
     -- Set content height
     container:SetHeight(-contentYOffset + 5)
 end
+
+-- Register events and slash commands
+local function OnAddonLoaded(self, event, addonName)
+    if event == "ADDON_LOADED" and addonName == "WoWLinks" then
+        WoWLinks:Debug("ADDON_LOADED fired for WoWLinks")
+        
+        -- Register slash commands
+        SLASH_WOWLINKS1 = "/wowlinks"
+        SLASH_WOWLINKS2 = "/wl"
+        SlashCmdList["WOWLINKS"] = function(msg) 
+            WoWLinks:HandleSlashCommand(msg) 
+        end
+        
+        WoWLinks:Init()
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        WoWLinks:Debug("PLAYER_ENTERING_WORLD fired")
+        -- Additional setup after player enters world if needed
+    end
+end
+
+-- Create and register event frame
+local eventFrame = CreateFrame("Frame")
+eventFrame:RegisterEvent("ADDON_LOADED")
+eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+eventFrame:SetScript("OnEvent", OnAddonLoaded)
+
+-- Print startup message
+print("|cFF33FF99WoWLinks:|r Initializing...")

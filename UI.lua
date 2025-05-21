@@ -1,4 +1,4 @@
-local addonName, WoWLinks = ...
+local addonName = ...
 
 function WoWLinks:CreateMainFrame()
     -- Main frame
@@ -11,6 +11,8 @@ function WoWLinks:CreateMainFrame()
     self.frame:RegisterForDrag("LeftButton")
     self.frame:SetScript("OnDragStart", self.frame.StartMoving)
     self.frame:SetScript("OnDragStop", self.frame.StopMovingOrSizing)
+    
+    -- Make sure the backdrop is properly defined
     self.frame:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
         edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -30,9 +32,26 @@ function WoWLinks:CreateMainFrame()
     title:SetPoint("CENTER", titleBar, "CENTER")
     title:SetText("WoWLinks")
     
-    -- Close button
-    local closeButton = CreateFrame("Button", nil, titleBar, "UIPanelCloseButton")
+    -- Custom close button
+    local closeButton = CreateFrame("Button", nil, self.frame)
+    closeButton:SetSize(32, 32)
     closeButton:SetPoint("TOPRIGHT", -5, -5)
+    
+    -- Use X texture for close button
+    local closeTexture = closeButton:CreateTexture(nil, "ARTWORK")
+    closeTexture:SetAllPoints()
+    closeTexture:SetTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Up")
+    closeButton:SetNormalTexture(closeTexture)
+    
+    local closeHighlightTexture = closeButton:CreateTexture(nil, "HIGHLIGHT")
+    closeHighlightTexture:SetAllPoints()
+    closeHighlightTexture:SetTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight")
+    closeHighlightTexture:SetBlendMode("ADD")
+    closeButton:SetHighlightTexture(closeHighlightTexture)
+    
+    closeButton:SetScript("OnClick", function() 
+        self.frame:Hide() 
+    end)
     
     -- Create tab container
     self:CreateTabs()
@@ -55,64 +74,113 @@ function WoWLinks:CreateTabs()
     tabFrame:SetPoint("TOPLEFT", 15, -35)
     tabFrame:SetPoint("BOTTOMRIGHT", -15, 15)
     
-    -- Create tabs
+    -- Create custom tabs
     for i, name in ipairs(tabNames) do
-        tabs[i] = CreateFrame("Button", "WoWLinksTab"..i, self.frame, "CharacterFrameTabButtonTemplate")
-        tabs[i]:SetText(name)
+        tabs[i] = CreateFrame("Button", "WoWLinksTab"..i, self.frame)
+        tabs[i]:SetSize(90, 24)
+        
+        -- Tab background
+        local bg = tabs[i]:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints()
+        bg:SetColorTexture(0.1, 0.1, 0.1, 0.7)
+        tabs[i].bg = bg
+        
+        -- Tab border
+        local border = CreateFrame("Frame", nil, tabs[i])
+        border:SetPoint("TOPLEFT", -1, 1)
+        border:SetPoint("BOTTOMRIGHT", 1, -1)
+        border:SetFrameLevel(tabs[i]:GetFrameLevel() - 1)
+        
+        local borderTex = border:CreateTexture(nil, "BACKGROUND")
+        borderTex:SetAllPoints()
+        borderTex:SetColorTexture(0.4, 0.4, 0.4, 0.7)
+        
+        -- Tab text
+        local text = tabs[i]:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        text:SetPoint("CENTER", 0, 0)
+        text:SetText(name)
+        tabs[i].text = text
+        
+        -- Tab highlight
+        local highlight = tabs[i]:CreateTexture(nil, "HIGHLIGHT")
+        highlight:SetAllPoints()
+        highlight:SetColorTexture(0.3, 0.3, 0.3, 0.5)
+        highlight:SetBlendMode("ADD")
+        
+        -- Content frame for this tab
         tabs[i].content = CreateFrame("Frame", nil, tabFrame)
         tabs[i].content:SetPoint("TOPLEFT", tabFrame, "TOPLEFT", 0, 0)
         tabs[i].content:SetPoint("BOTTOMRIGHT", tabFrame, "BOTTOMRIGHT", 0, 0)
         tabs[i].content:Hide()
         tabContents[i] = tabs[i].content
         
+        -- Position tabs
         if i == 1 then
-            tabs[i]:SetPoint("TOPLEFT", tabFrame, "BOTTOMLEFT", 0, 0)
+            tabs[i]:SetPoint("BOTTOMLEFT", tabFrame, "TOPLEFT", 0, 1)
         else
-            tabs[i]:SetPoint("TOPLEFT", tabs[i-1], "TOPRIGHT", -14, 0)
+            tabs[i]:SetPoint("LEFT", tabs[i-1], "RIGHT", 2, 0)
         end
         
+        -- Tab click handling
         tabs[i]:SetScript("OnClick", function()
             for j, tab in ipairs(tabs) do
                 if i == j then
-                    PanelTemplates_SelectTab(tab)
+                    -- Selected tab
                     tab.content:Show()
+                    tab.text:SetTextColor(1, 1, 1)
+                    tab.bg:SetColorTexture(0.25, 0.25, 0.25, 0.9)
                 else
-                    PanelTemplates_DeselectTab(tab)
+                    -- Unselected tabs
                     tab.content:Hide()
+                    tab.text:SetTextColor(0.8, 0.8, 0.8)
+                    tab.bg:SetColorTexture(0.1, 0.1, 0.1, 0.7)
                 end
             end
         end)
     end
     
-    -- Setup classes tab
+    -- Setup tabs content
     self:SetupClassesTab(tabContents[1])
-    
-    -- Setup tools tab
     self:SetupToolsTab(tabContents[2])
-    
-    -- Setup favorites tab
     self:SetupFavoritesTab(tabContents[3])
-    
-    -- Setup settings tab
     self:SetupSettingsTab(tabContents[4])
     
     -- Store tabs for later access
     self.tabs = tabs
     
-    -- Select first tab by default
-    PanelTemplates_SelectTab(tabs[1])
-    tabs[1].content:Show()
+    -- Select first tab by default (simulate a click)
+    tabs[1]:GetScript("OnClick")(tabs[1])
 end
 
 function WoWLinks:SetupClassesTab(frame)
-    -- Create scrollframe
-    local scrollFrame = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
+    -- Create custom scrollframe
+    local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
     scrollFrame:SetPoint("TOPLEFT", 0, 0)
-    scrollFrame:SetPoint("BOTTOMRIGHT", -30, 0)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -20, 0)
     
+    -- Create scroll bar
+    local scrollbar = CreateFrame("Slider", nil, scrollFrame)
+    scrollbar:SetWidth(16)
+    scrollbar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 0, 0)
+    scrollbar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 0, 0)
+    scrollbar:SetThumbTexture("Interface\\Buttons\\UI-ScrollBar-Knob")
+    local thumb = scrollbar:GetThumbTexture()
+    thumb:SetSize(16, 24)
+    thumb:SetColorTexture(0.4, 0.4, 0.4, 0.7)
+    
+    scrollbar:SetMinMaxValues(0, 1000)
+    scrollbar:SetValueStep(1)
+    scrollbar:SetValue(0)
+    
+    -- Create scroll frame content 
     local content = CreateFrame("Frame", nil, scrollFrame)
-    content:SetSize(scrollFrame:GetWidth(), 1000)
+    content:SetSize(scrollFrame:GetWidth(), 1000) -- Initial height
     scrollFrame:SetScrollChild(content)
+    
+    -- Set up scrollbar script
+    scrollbar:SetScript("OnValueChanged", function(self, value)
+        scrollFrame:SetVerticalScroll(value)
+    end)
     
     -- Add current character section at the top
     local currentClassFrame = CreateFrame("Frame", nil, content)
@@ -156,11 +224,18 @@ function WoWLinks:SetupClassesTab(frame)
     specText:SetPoint("LEFT", classIcon, "RIGHT", 5, 0)
     specText:SetText(playerClass .. " - " .. currentSpecName)
     
-    -- Expand button for current spec
-    local expandButton = CreateFrame("Button", nil, currentSpecFrame, "UIPanelButtonTemplate")
+    -- Custom expand button
+    local expandButton = CreateFrame("Button", nil, currentSpecFrame)
     expandButton:SetSize(80, 20)
     expandButton:SetPoint("RIGHT", -5, 0)
-    expandButton:SetText("View Links")
+    
+    local expandButtonBg = expandButton:CreateTexture(nil, "BACKGROUND")
+    expandButtonBg:SetAllPoints()
+    expandButtonBg:SetColorTexture(0.3, 0.3, 0.3, 0.8)
+    
+    local expandButtonText = expandButton:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    expandButtonText:SetPoint("CENTER", 0, 0)
+    expandButtonText:SetText("View Links")
     
     -- Create content container for current spec (initially hidden)
     local currentSpecContent = CreateFrame("Frame", nil, content)
@@ -200,10 +275,10 @@ function WoWLinks:SetupClassesTab(frame)
     expandButton:SetScript("OnClick", function()
         if currentSpecContent:IsShown() then
             currentSpecContent:Hide()
-            expandButton:SetText("View Links")
+            expandButtonText:SetText("View Links")
         else
             currentSpecContent:Show()
-            expandButton:SetText("Hide Links")
+            expandButtonText:SetText("Hide Links")
         end
         self:RecalculateContentHeight(content)
     end)
@@ -341,13 +416,34 @@ function WoWLinks:SetupClassesTab(frame)
 end
 
 function WoWLinks:SetupToolsTab(frame)
-    local scrollFrame = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
+    -- Custom scrollframe
+    local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
     scrollFrame:SetPoint("TOPLEFT", 0, 0)
-    scrollFrame:SetPoint("BOTTOMRIGHT", -30, 0)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -20, 0)
     
+    -- Create scroll bar
+    local scrollbar = CreateFrame("Slider", nil, scrollFrame)
+    scrollbar:SetWidth(16)
+    scrollbar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 0, 0)
+    scrollbar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 0, 0)
+    scrollbar:SetThumbTexture("Interface\\Buttons\\UI-ScrollBar-Knob")
+    local thumb = scrollbar:GetThumbTexture()
+    thumb:SetSize(16, 24)
+    thumb:SetColorTexture(0.4, 0.4, 0.4, 0.7)
+    
+    scrollbar:SetMinMaxValues(0, 1000)
+    scrollbar:SetValueStep(1)
+    scrollbar:SetValue(0)
+    
+    -- Create scroll frame content 
     local content = CreateFrame("Frame", nil, scrollFrame)
-    content:SetSize(scrollFrame:GetWidth(), 600)
+    content:SetSize(scrollFrame:GetWidth(), 1000) -- Initial height
     scrollFrame:SetScrollChild(content)
+    
+    -- Set up scrollbar script
+    scrollbar:SetScript("OnValueChanged", function(self, value)
+        scrollFrame:SetVerticalScroll(value)
+    end)
     
     local yOffset = -10
     
@@ -368,17 +464,39 @@ function WoWLinks:SetupToolsTab(frame)
         desc:SetPoint("TOPLEFT", 10, -30)
         desc:SetText(tool.description)
         
-        local visitButton = CreateFrame("Button", nil, toolFrame, "UIPanelButtonTemplate")
+        -- Custom visit button
+        local visitButton = CreateFrame("Button", nil, toolFrame)
         visitButton:SetSize(80, 22)
         visitButton:SetPoint("TOPRIGHT", -10, -10)
-        visitButton:SetText("Visit")
+        
+        local visitBg = visitButton:CreateTexture(nil, "BACKGROUND")
+        visitBg:SetAllPoints()
+        visitBg:SetColorTexture(0.3, 0.3, 0.3, 0.8)
+        
+        local visitText = visitButton:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        visitText:SetPoint("CENTER", 0, 0)
+        visitText:SetText("Visit")
+        
         visitButton:SetScript("OnClick", function()
             WoWLinks:OpenURL(tool.url, tool.name)
         end)
         
-        local favButton = CreateFrame("CheckButton", nil, toolFrame, "UICheckButtonTemplate")
+        -- Custom favorite checkbox
+        local favButton = CreateFrame("CheckButton", nil, toolFrame)
         favButton:SetSize(24, 24)
         favButton:SetPoint("RIGHT", visitButton, "LEFT", -5, 0)
+        
+        -- Create visuals for checked/unchecked states
+        local checkedTexture = favButton:CreateTexture(nil, "ARTWORK")
+        checkedTexture:SetAllPoints()
+        checkedTexture:SetColorTexture(0, 0.8, 0, 0.8)
+        favButton:SetCheckedTexture(checkedTexture)
+        
+        local uncheckedTexture = favButton:CreateTexture(nil, "ARTWORK")
+        uncheckedTexture:SetAllPoints()
+        uncheckedTexture:SetColorTexture(0.3, 0.3, 0.3, 0.8)
+        favButton:SetNormalTexture(uncheckedTexture)
+        
         favButton:SetChecked(WoWLinksDB.favorites[tool.url] ~= nil)
         favButton:SetScript("OnClick", function()
             if favButton:GetChecked() then
@@ -414,14 +532,34 @@ function WoWLinks:UpdateFavoritesTab()
         child:SetParent(nil)
     end
     
-    -- Create scrollframe
-    local scrollFrame = CreateFrame("ScrollFrame", nil, self.favoritesTab, "UIPanelScrollFrameTemplate")
+    -- Create custom scrollframe
+    local scrollFrame = CreateFrame("ScrollFrame", nil, self.favoritesTab)
     scrollFrame:SetPoint("TOPLEFT", 0, 0)
-    scrollFrame:SetPoint("BOTTOMRIGHT", -30, 0)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -20, 0)
     
+    -- Create scroll bar
+    local scrollbar = CreateFrame("Slider", nil, scrollFrame)
+    scrollbar:SetWidth(16)
+    scrollbar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 0, 0)
+    scrollbar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 0, 0)
+    scrollbar:SetThumbTexture("Interface\\Buttons\\UI-ScrollBar-Knob")
+    local thumb = scrollbar:GetThumbTexture()
+    thumb:SetSize(16, 24)
+    thumb:SetColorTexture(0.4, 0.4, 0.4, 0.7)
+    
+    scrollbar:SetMinMaxValues(0, 1000)
+    scrollbar:SetValueStep(1)
+    scrollbar:SetValue(0)
+    
+    -- Create scroll frame content 
     local content = CreateFrame("Frame", nil, scrollFrame)
-    content:SetSize(scrollFrame:GetWidth(), 600)
+    content:SetSize(scrollFrame:GetWidth(), 1000) -- Initial height
     scrollFrame:SetScrollChild(content)
+    
+    -- Set up scrollbar script
+    scrollbar:SetScript("OnValueChanged", function(self, value)
+        scrollFrame:SetVerticalScroll(value)
+    end)
     
     local yOffset = -10
     local hasFavorites = false
@@ -445,18 +583,36 @@ function WoWLinks:UpdateFavoritesTab()
         desc:SetPoint("TOPLEFT", 10, -30)
         desc:SetText(favorite.description or "")
         
-        local visitButton = CreateFrame("Button", nil, favFrame, "UIPanelButtonTemplate")
+        -- Custom visit button
+        local visitButton = CreateFrame("Button", nil, favFrame)
         visitButton:SetSize(80, 22)
         visitButton:SetPoint("TOPRIGHT", -10, -10)
-        visitButton:SetText("Visit")
+        
+        local visitBg = visitButton:CreateTexture(nil, "BACKGROUND")
+        visitBg:SetAllPoints()
+        visitBg:SetColorTexture(0.3, 0.3, 0.3, 0.8)
+        
+        local visitText = visitButton:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        visitText:SetPoint("CENTER", 0, 0)
+        visitText:SetText("Visit")
+        
         visitButton:SetScript("OnClick", function()
             WoWLinks:OpenURL(favorite.url, favorite.name)
         end)
         
-        local removeButton = CreateFrame("Button", nil, favFrame, "UIPanelButtonTemplate")
+        -- Custom remove button
+        local removeButton = CreateFrame("Button", nil, favFrame)
         removeButton:SetSize(80, 22)
         removeButton:SetPoint("TOPRIGHT", visitButton, "TOPLEFT", -5, 0)
-        removeButton:SetText("Remove")
+        
+        local removeBg = removeButton:CreateTexture(nil, "BACKGROUND")
+        removeBg:SetAllPoints()
+        removeBg:SetColorTexture(0.3, 0.3, 0.3, 0.8)
+        
+        local removeText = removeButton:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        removeText:SetPoint("CENTER", 0, 0)
+        removeText:SetText("Remove")
+        
         removeButton:SetScript("OnClick", function()
             WoWLinksDB.favorites[url] = nil
             WoWLinks:UpdateFavoritesTab()
@@ -479,45 +635,75 @@ function WoWLinks:SetupSettingsTab(frame)
     title:SetPoint("TOPLEFT", 20, -20)
     title:SetText("Settings")
     
-    -- Scale slider
+    -- Scale slider - custom implementation
     local scaleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     scaleText:SetPoint("TOPLEFT", 30, -60)
     scaleText:SetText("UI Scale: " .. WoWLinksDB.settings.scale)
     
-    local scaleSlider = CreateFrame("Slider", "WoWLinksScaleSlider", frame, "OptionsSliderTemplate")
+    local scaleSlider = CreateFrame("Slider", "WoWLinksScaleSlider", frame)
     scaleSlider:SetPoint("TOPLEFT", 30, -80)
     scaleSlider:SetWidth(200)
+    scaleSlider:SetHeight(16)
+    scaleSlider:SetThumbTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
+    local scaleThumb = scaleSlider:GetThumbTexture()
+    scaleThumb:SetSize(16, 24)
+    
+    local scaleSliderTexture = scaleSlider:CreateTexture(nil, "BACKGROUND")
+    scaleSliderTexture:SetTexture("Interface\\Buttons\\UI-SliderBar-Border")
+    scaleSliderTexture:SetAllPoints()
+    
     scaleSlider:SetMinMaxValues(0.5, 1.5)
     scaleSlider:SetValueStep(0.05)
     scaleSlider:SetValue(WoWLinksDB.settings.scale)
+    scaleSlider:SetOrientation("HORIZONTAL")
+    
     scaleSlider:SetScript("OnValueChanged", function(self, value)
         WoWLinksDB.settings.scale = value
         WoWLinks.frame:SetScale(value)
         scaleText:SetText("UI Scale: " .. string.format("%.2f", value))
     end)
     
-    -- Opacity slider
+    -- Opacity slider - custom implementation
     local opacityText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     opacityText:SetPoint("TOPLEFT", 30, -120)
     opacityText:SetText("UI Opacity: " .. WoWLinksDB.settings.opacity * 100 .. "%")
     
-    local opacitySlider = CreateFrame("Slider", "WoWLinksOpacitySlider", frame, "OptionsSliderTemplate")
+    local opacitySlider = CreateFrame("Slider", "WoWLinksOpacitySlider", frame)
     opacitySlider:SetPoint("TOPLEFT", 30, -140)
     opacitySlider:SetWidth(200)
+    opacitySlider:SetHeight(16)
+    opacitySlider:SetThumbTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
+    local opacityThumb = opacitySlider:GetThumbTexture()
+    opacityThumb:SetSize(16, 24)
+    
+    local opacitySliderTexture = opacitySlider:CreateTexture(nil, "BACKGROUND")
+    opacitySliderTexture:SetTexture("Interface\\Buttons\\UI-SliderBar-Border")
+    opacitySliderTexture:SetAllPoints()
+    
     opacitySlider:SetMinMaxValues(0.1, 1)
     opacitySlider:SetValueStep(0.05)
     opacitySlider:SetValue(WoWLinksDB.settings.opacity)
+    opacitySlider:SetOrientation("HORIZONTAL")
+    
     opacitySlider:SetScript("OnValueChanged", function(self, value)
         WoWLinksDB.settings.opacity = value
         WoWLinks.frame:SetAlpha(value)
         opacityText:SetText("UI Opacity: " .. string.format("%.0f", value * 100) .. "%")
     end)
     
-    -- Reset button
-    local resetButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    -- Reset button - custom implementation
+    local resetButton = CreateFrame("Button", nil, frame)
     resetButton:SetSize(100, 24)
     resetButton:SetPoint("TOPLEFT", 30, -180)
-    resetButton:SetText("Reset Settings")
+    
+    local resetBg = resetButton:CreateTexture(nil, "BACKGROUND")
+    resetBg:SetAllPoints()
+    resetBg:SetColorTexture(0.3, 0.3, 0.3, 0.8)
+    
+    local resetText = resetButton:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    resetText:SetPoint("CENTER", 0, 0)
+    resetText:SetText("Reset Settings")
+    
     resetButton:SetScript("OnClick", function()
         WoWLinksDB = nil
         ReloadUI()
