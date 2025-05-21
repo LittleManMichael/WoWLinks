@@ -1,0 +1,10 @@
+## Interface: 100205
+## Title: WoWLinks
+## Notes: WoWLinks is a simple addon that allows access to top WoW content creators, guides, and resources.
+## Author: WoWLinks Team
+## Version: 0.1.1
+## SavedVariables: WoWLinksDB
+
+Data.Lua
+Core.Lua
+UI.Lua
