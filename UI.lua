@@ -153,12 +153,19 @@ function WoWLinks:CreateTabs()
 end
 
 function WoWLinks:SetupClassesTab(frame)
-    -- Create custom scrollframe
+    -- Get player's class and spec data first
+    local _, playerClass = UnitClass("player")
+    local playerClassColor = RAID_CLASS_COLORS[playerClass]
+    local classDisplayName = LOCALIZED_CLASS_NAMES_MALE[playerClass] or playerClass
+    local currentSpec = GetSpecialization()
+    local currentSpecID = currentSpec and GetSpecializationInfo(currentSpec) or nil
+    local currentSpecName = currentSpecID and select(2, GetSpecializationInfoByID(currentSpecID)) or "Unknown"
+    
+    -- Create scrollframe and content first
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
     scrollFrame:SetPoint("TOPLEFT", 0, 0)
     scrollFrame:SetPoint("BOTTOMRIGHT", -20, 0)
     
-    -- Create scroll bar
     local scrollbar = CreateFrame("Slider", nil, scrollFrame)
     scrollbar:SetWidth(16)
     scrollbar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 0, 0)
@@ -172,49 +179,28 @@ function WoWLinks:SetupClassesTab(frame)
     scrollbar:SetValueStep(1)
     scrollbar:SetValue(0)
     
-    -- Create scroll frame content 
     local content = CreateFrame("Frame", nil, scrollFrame)
-    content:SetSize(scrollFrame:GetWidth(), 1000) -- Initial height
+    content:SetSize(scrollFrame:GetWidth(), 1000)
     scrollFrame:SetScrollChild(content)
     
-    -- Set up scrollbar script
     scrollbar:SetScript("OnValueChanged", function(self, value)
         scrollFrame:SetVerticalScroll(value)
     end)
     
-    -- Add current character section at the top
+    -- Current character section
     local currentClassFrame = CreateFrame("Frame", nil, content)
     currentClassFrame:SetSize(scrollFrame:GetWidth() - 20, 30)
     currentClassFrame:SetPoint("TOPLEFT", 10, -10)
     
     local currentBg = currentClassFrame:CreateTexture(nil, "BACKGROUND")
     currentBg:SetAllPoints()
-    currentBg:SetColorTexture(0.3, 0.3, 0.4, 1.0) -- Slightly different color to stand out
+    currentBg:SetColorTexture(0.3, 0.3, 0.4, 1.0)
     
     local currentTitle = currentClassFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     currentTitle:SetPoint("LEFT", 10, 0)
     currentTitle:SetText("Current Character")
     
-    -- Get player's class and spec
-    local _, playerClass = UnitClass("player")
-    local playerClassColor = RAID_CLASS_COLORS[playerClass]
-    local classDisplayName = LOCALIZED_CLASS_NAMES_MALE[playerClass] or playerClass
-    local currentSpec = GetSpecialization()
-    local currentSpecID = currentSpec and GetSpecializationInfo(currentSpec) or nil
-    local currentSpecName = currentSpecID and select(2, GetSpecializationInfoByID(currentSpecID)) or "Unknown"
-
-    -- Update class icon and text properly
-    if WoWLinksData.classIcons[playerClass] then
-        classIcon:SetTexture(WoWLinksData.classIcons[playerClass].file)
-        classIcon:SetTexCoord(unpack(WoWLinksData.classIcons[playerClass].coords))
-    end
-
-specText:SetText(classDisplayName .. " - " .. currentSpecName)
-if playerClassColor then
-    specText:SetTextColor(playerClassColor.r, playerClassColor.g, playerClassColor.b)
-end
-
-    -- Current spec content
+    -- Current spec frame
     local currentSpecFrame = CreateFrame("Frame", nil, content)
     currentSpecFrame:SetSize(scrollFrame:GetWidth() - 40, 30)
     currentSpecFrame:SetPoint("TOPLEFT", currentClassFrame, "BOTTOMLEFT", 20, 0)
@@ -223,7 +209,6 @@ end
     currentSpecBg:SetAllPoints()
     currentSpecBg:SetColorTexture(0.2, 0.2, 0.3, 1.0)
     
-    -- Class icon
     local classIcon = currentSpecFrame:CreateTexture(nil, "ARTWORK")
     classIcon:SetSize(20, 20)
     classIcon:SetPoint("LEFT", 5, 0)
@@ -235,9 +220,11 @@ end
     
     local specText = currentSpecFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     specText:SetPoint("LEFT", classIcon, "RIGHT", 5, 0)
-    specText:SetText(playerClass .. " - " .. currentSpecName)
+    specText:SetText(classDisplayName .. " - " .. currentSpecName)
+    if playerClassColor then
+        specText:SetTextColor(playerClassColor.r, playerClassColor.g, playerClassColor.b)
+    end
     
-    -- Custom expand button
     local expandButton = CreateFrame("Button", nil, currentSpecFrame)
     expandButton:SetSize(80, 20)
     expandButton:SetPoint("RIGHT", -5, 0)
@@ -250,41 +237,30 @@ end
     expandButtonText:SetPoint("CENTER", 0, 0)
     expandButtonText:SetText("View Links")
     
-    -- Create content container for current spec (initially hidden)
     local currentSpecContent = CreateFrame("Frame", nil, content)
-    currentSpecContent:SetSize(scrollFrame:GetWidth() - 60, 0) -- Height will be calculated
+    currentSpecContent:SetSize(scrollFrame:GetWidth() - 60, 0)
     currentSpecContent:SetPoint("TOPLEFT", currentSpecFrame, "BOTTOMLEFT", 0, 0)
     currentSpecContent:Hide()
     
-    -- Detect if we have data for the player's class/spec
+    -- Populate current spec data
     local hasPlayerData = false
     if WoWLinksData.classes[playerClass] then
-        -- Find the matching spec in our data (handle slight naming differences)
         for specKey, specData in pairs(WoWLinksData.classes[playerClass].specs) do
             if specKey:find(currentSpecName) or currentSpecName:find(specKey) then
                 hasPlayerData = true
-                
-                -- Set up content for current spec
-                self:PopulateSpecContent(
-                    currentSpecContent, 
-                    specData, 
-                    currentSpecName, 
-                    playerClass
-                )
+                self:PopulateSpecContent(currentSpecContent, specData, currentSpecName, playerClass)
                 break
             end
         end
     end
     
     if not hasPlayerData then
-        -- No data for this class/spec
         local noDataText = currentSpecContent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         noDataText:SetPoint("CENTER", 0, -15)
         noDataText:SetText("No data available for " .. currentSpecName .. " " .. playerClass)
         currentSpecContent:SetHeight(30)
     end
     
-    -- Toggle current spec content
     expandButton:SetScript("OnClick", function()
         if currentSpecContent:IsShown() then
             currentSpecContent:Hide()
@@ -296,7 +272,7 @@ end
         self:RecalculateContentHeight(content)
     end)
     
-    -- Add divider
+    -- Divider and all classes section
     local divider = content:CreateTexture(nil, "ARTWORK")
     divider:SetSize(scrollFrame:GetWidth() - 20, 2)
     divider:SetPoint("TOPLEFT", 10, -80 - (currentSpecContent:IsShown() and currentSpecContent:GetHeight() or 0))
@@ -306,7 +282,7 @@ end
     allClassesTitle:SetPoint("TOPLEFT", 10, -90 - (currentSpecContent:IsShown() and currentSpecContent:GetHeight() or 0))
     allClassesTitle:SetText("All Classes")
     
-    -- Create class buttons (starting below the divider)
+    -- Create class buttons
     local yOffset = -110 - (currentSpecContent:IsShown() and currentSpecContent:GetHeight() or 0)
     local classButtons = {}
     local index = 1
@@ -335,19 +311,16 @@ end
         
         local expandIcon = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         expandIcon:SetPoint("RIGHT", -5, 0)
-        expandIcon:SetText("▶") -- Default to collapsed
+        expandIcon:SetText("▶")
         
-        -- Dropdown content for specs
         local dropdown = CreateFrame("Frame", nil, content)
-        dropdown:SetSize(scrollFrame:GetWidth() - 40, 0) -- Height will be calculated
+        dropdown:SetSize(scrollFrame:GetWidth() - 40, 0)
         dropdown:SetPoint("TOPLEFT", button, "BOTTOMLEFT", 20, 0)
         dropdown:Hide()
         
-        -- Populate spec buttons
         local specYOffset = 0
         
         for specName, specData in pairs(classData.specs) do
-            -- Spec button
             local specButton = CreateFrame("Button", nil, dropdown)
             specButton:SetSize(dropdown:GetWidth(), 25)
             specButton:SetPoint("TOPLEFT", 0, specYOffset)
@@ -359,15 +332,14 @@ end
             local specText = specButton:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             specText:SetPoint("LEFT", 10, 0)
             specText:SetText(specName)
-            specText:SetTextColor(1.0, 0.6, 0.2) -- Orange-ish color
+            specText:SetTextColor(1.0, 0.6, 0.2)
             
             local specExpandIcon = specButton:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             specExpandIcon:SetPoint("RIGHT", -5, 0)
-            specExpandIcon:SetText("▶") -- Default to collapsed
+            specExpandIcon:SetText("▶")
             
-            -- Spec content
             local specContent = CreateFrame("Frame", nil, dropdown)
-            specContent:SetSize(dropdown:GetWidth(), 0) -- Height will be calculated
+            specContent:SetSize(dropdown:GetWidth(), 0)
             specContent:SetPoint("TOPLEFT", specButton, "BOTTOMLEFT", 0, 0)
             specContent:Hide()
             
@@ -375,10 +347,8 @@ end
             specContentBg:SetAllPoints()
             specContentBg:SetColorTexture(0.13, 0.13, 0.13, 1.0)
             
-            -- Populate spec content
             self:PopulateSpecContent(specContent, specData, specName, className)
             
-            -- Toggle spec content visibility
             specButton:SetScript("OnClick", function()
                 if specContent:IsShown() then
                     specContent:Hide()
@@ -394,10 +364,8 @@ end
             specYOffset = specYOffset - 30 - (specContent:IsShown() and specContent:GetHeight() or 0)
         end
         
-        -- Set initial dropdown height
         dropdown:SetHeight(-specYOffset)
         
-        -- Toggle class dropdown visibility
         button:SetScript("OnClick", function()
             if dropdown:IsShown() then
                 dropdown:Hide()
@@ -415,10 +383,9 @@ end
         index = index + 1
     end
     
-    -- Calculate final content height
     content:SetHeight(math.max(-yOffset + 20, scrollFrame:GetHeight()))
     
-    -- Store references for updates
+    -- Store references
     self.classScrollFrame = scrollFrame
     self.classContent = content
     self.currentSpecContent = currentSpecContent
