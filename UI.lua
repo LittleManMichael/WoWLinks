@@ -202,17 +202,17 @@ function WoWLinks:SetupClassesTab(frame)
     local currentSpec = GetSpecialization()
     local currentSpecID = currentSpec and GetSpecializationInfo(currentSpec) or nil
     local currentSpecName = currentSpecID and select(2, GetSpecializationInfoByID(currentSpecID)) or "Unknown"
-    
+
     -- Update class icon and text properly
     if WoWLinksData.classIcons[playerClass] then
         classIcon:SetTexture(WoWLinksData.classIcons[playerClass].file)
         classIcon:SetTexCoord(unpack(WoWLinksData.classIcons[playerClass].coords))
     end
 
-    specText:SetText(classDisplayName .. " - " .. currentSpecName)
-    if playerClassColor then
-        specText:SetTextColor(playerClassColor.r, playerClassColor.g, playerClassColor.b)
-    end
+specText:SetText(classDisplayName .. " - " .. currentSpecName)
+if playerClassColor then
+    specText:SetTextColor(playerClassColor.r, playerClassColor.g, playerClassColor.b)
+end
 
     -- Current spec content
     local currentSpecFrame = CreateFrame("Frame", nil, content)
